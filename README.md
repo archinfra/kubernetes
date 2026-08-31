@@ -6,8 +6,9 @@ Archinfra 自维护的 Kubernetes 发行与交付仓库。
 
 ```text
 source
-  -> runtime rootfs (derived from sealos runtime)
-  -> sealos cluster image
+  -> pinned containerd+runc bundle
+  -> Sealos-compatible runtime rootfs
+  -> Sealos cluster image
   -> verification
   -> apps_kubernetes offline delivery package
 ```
@@ -16,20 +17,23 @@ source
 
 - Kubernetes: `v1.36.4`
 - Sealos: `v5.1.1`
-- Runtime family: containerd `2.3.x` (Kubernetes 1.36 recommended line)
+- containerd: `v2.3.3` (Archinfra downloads and verifies the official release)
+- runc: `v1.4.3` (Archinfra downloads and verifies the official release)
 - Architectures: `amd64` first, `arm64` prepared
 - Host OS target: Ubuntu 22.04 / 24.04
 - CNI / CSI / Ingress are deliberately outside the base image and will live under `addons/`
+
+The version manifest pins SHA256 for Sealos, containerd and runc. The cluster-image build **does not inherit containerd/runc from the Sealos cache**.
 
 ## Repository layout
 
 ```text
 .
-├── runtime/                 # Sealos-compatible Kubernetes rootfs source
+├── runtime/                 # vendored/adapted Sealos-compatible rootfs source
 │   ├── k8s/
 │   ├── containerd/
 │   └── registry/
-├── versions/                # immutable release inputs
+├── versions/                # immutable release inputs + checksums
 ├── hack/                    # build / package / verify scripts
 ├── packaging/               # files copied into apps_kubernetes
 ├── configs/                 # install examples and policy
@@ -41,9 +45,12 @@ source
 
 ```bash
 make install-sealos VERSION=v1.36.4 ARCH=amd64
+make static-check
+make runtime-bundle VERSION=v1.36.4 ARCH=amd64
 make check VERSION=v1.36.4 ARCH=amd64
 make cluster-image VERSION=v1.36.4 ARCH=amd64
 make package VERSION=v1.36.4 ARCH=amd64
+make verify VERSION=v1.36.4 ARCH=amd64
 ```
 
 Default local cluster-image tag:
@@ -65,6 +72,7 @@ apps_kubernetes/
 ├── bin/sealos
 ├── images/kubernetes-v1.36.4-amd64.tar
 ├── manifests/release.env
+├── manifests/runtime.env
 ├── manifests/provenance.txt
 ├── configs/
 ├── scripts/install.sh
@@ -88,6 +96,18 @@ cd apps_kubernetes
 ```
 
 The base cluster intentionally does not install a CNI. Install the approved CNI immediately after the Kubernetes control plane is ready.
+
+## Ownership boundary
+
+Archinfra owns:
+
+- Kubernetes release baseline and compatibility matrix;
+- containerd/runc versions and checksums;
+- Sealos-compatible runtime rootfs;
+- build, verification and offline packaging;
+- production defaults and release gates.
+
+V1 still consumes the pinned `ghcr.io/labring-actions/cache` for Kubernetes release payloads, `crictl`, `conntrack`, local registry binary and Sealos helper binaries. Removing that final upstream build-time dependency is a planned follow-up; it does not affect offline installation of a completed `apps_kubernetes` package.
 
 ## Upstream policy
 

@@ -1,6 +1,14 @@
 name: build-apps-kubernetes
 
 on:
+  pull_request:
+    paths:
+      - 'runtime/**'
+      - 'versions/**'
+      - 'hack/**'
+      - 'packaging/**'
+      - 'configs/**'
+      - '.github/workflows/build-apps-kubernetes.yml'
   workflow_dispatch:
     inputs:
       version:
@@ -26,9 +34,22 @@ permissions:
   contents: read
 
 jobs:
+  static:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Static checks
+        run: ./hack/static-check.sh
+
   build:
+    needs: static
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    env:
+      VERSION: ${{ inputs.version || 'v1.36.4' }}
+      ARCH: ${{ inputs.arch || 'amd64' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,37 +61,25 @@ jobs:
           sudo apt-get install -y buildah file tree
 
       - name: Install pinned Sealos
-        env:
-          VERSION: ${{ inputs.version || 'v1.36.4' }}
-          ARCH: ${{ inputs.arch || 'amd64' }}
         run: ./hack/install-sealos.sh
 
       - name: Preflight
-        env:
-          VERSION: ${{ inputs.version || 'v1.36.4' }}
-          ARCH: ${{ inputs.arch || 'amd64' }}
         run: ./hack/check-tools.sh
 
+      - name: Build pinned runtime bundle
+        run: ./hack/build-runtime-bundle.sh
+
       - name: Build cluster image
-        env:
-          VERSION: ${{ inputs.version || 'v1.36.4' }}
-          ARCH: ${{ inputs.arch || 'amd64' }}
         run: ./hack/build-cluster-image.sh
 
       - name: Build offline package
-        env:
-          VERSION: ${{ inputs.version || 'v1.36.4' }}
-          ARCH: ${{ inputs.arch || 'amd64' }}
         run: ./hack/package.sh
 
       - name: Verify package
-        env:
-          VERSION: ${{ inputs.version || 'v1.36.4' }}
-          ARCH: ${{ inputs.arch || 'amd64' }}
         run: ./hack/verify-package.sh
 
       - uses: actions/upload-artifact@v4
         with:
-          name: apps_kubernetes-${{ inputs.version || 'v1.36.4' }}-linux-${{ inputs.arch || 'amd64' }}
+          name: apps_kubernetes-${{ env.VERSION }}-linux-${{ env.ARCH }}
           path: dist/apps_kubernetes-*.tar.gz
           if-no-files-found: error

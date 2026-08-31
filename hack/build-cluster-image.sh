@@ -18,6 +18,11 @@ SUDO=""
 
 for cmd in buildah file grep sed tar; do require_cmd "$cmd"; done
 
+# Build our own pinned containerd+runc bundle first. The Sealos cache is not authoritative for CRI versions.
+VERSION="$KUBE_VERSION" ARCH="$ARCH" "$ROOT/hack/build-runtime-bundle.sh"
+RUNTIME_BUNDLE="$ROOT/dist/cache/cri-containerd-${CONTAINERD_VERSION}-${RUNC_VERSION}-${ARCH}.tar.gz"
+[[ -f "$RUNTIME_BUNDLE" ]] || die "runtime bundle missing: $RUNTIME_BUNDLE"
+
 WORK="$ROOT/.work/${KUBE_VERSION}-${ARCH}"
 ROOTFS="$WORK/rootfs"
 rm -rf "$WORK"
@@ -48,20 +53,21 @@ log "mounting pinned upstream cache inputs"
 MOUNT_CRI="$(mount_image "$CACHE:cri-$ARCH")"
 MOUNT_KUBE="$(mount_image "$CACHE:kubernetes-v${KUBE}-$ARCH")"
 MOUNT_CRIO="$(mount_image "$CACHE:cri-v${KUBE_XY}-$ARCH")"
-MOUNT_TOOLS="$(mount_image "$CACHE:tools-$ARCH")"
 MOUNT_SEALOS="$(mount_image "$CACHE:sealos-v${SEALOS_NO_V}-$ARCH")"
 
-# Sealos runtime helpers.
+# Sealos bootstrap helpers.
 cp -a "$MOUNT_SEALOS/sealos/image-cri-shim" "$ROOTFS/cri/"
 cp -a "$MOUNT_SEALOS/sealos/sealctl" "$ROOTFS/opt/"
 
-# Runtime and node tools follow the proven labring-actions/runtime layout.
+# Kubernetes-adjacent node tools remain sourced from the pinned upstream cache for V1.
 tar -xzf "$MOUNT_CRIO/cri/crictl.tar.gz" -C "$ROOTFS/bin/"
 cp -a "$MOUNT_CRI/cri/conntrack" "$ROOTFS/bin/"
 cp -a "$MOUNT_CRI/cri/lsof" "$ROOTFS/opt/"
 cp -a "$MOUNT_CRI/cri/registry" "$ROOTFS/cri/"
 cp -a "$MOUNT_CRI/cri/libseccomp.tar.gz" "$ROOTFS/cri/"
-cp -a "$MOUNT_CRI/cri/cri-containerd.tar.gz" "$ROOTFS/cri/"
+
+# The CRI runtime itself is Archinfra-owned and version-pinned.
+cp -a "$RUNTIME_BUNDLE" "$ROOTFS/cri/cri-containerd.tar.gz"
 
 # Keep Kubefile based on the exact Kubernetes cache image so kubeadm/kubelet,
 # image lists and embedded registry content are version aligned.
@@ -80,7 +86,8 @@ $SUDO "$SEALOS" build \
   --label="sealos.io.version=v1beta1" \
   --label="version=${KUBE_VERSION}" \
   --label="org.archinfra.upstream-runtime=${UPSTREAM_RUNTIME_COMMIT}" \
-  --label="org.archinfra.containerd-line=${CONTAINERD_SERIES}" \
+  --label="org.archinfra.containerd=${CONTAINERD_VERSION}" \
+  --label="org.archinfra.runc=${RUNC_VERSION}" \
   --label="image=${ipvs_image}" \
   --env="defaultVIP=${DEFAULT_VIP}" \
   --env="sandboxImage=${pause_image#*/}" \
@@ -94,7 +101,8 @@ ARCH=${ARCH}
 CLUSTER_IMAGE=${IMAGE}
 SEALOS_VERSION=${SEALOS_VERSION}
 UPSTREAM_RUNTIME_COMMIT=${UPSTREAM_RUNTIME_COMMIT}
-CONTAINERD_SERIES=${CONTAINERD_SERIES}
+CONTAINERD_VERSION=${CONTAINERD_VERSION}
+RUNC_VERSION=${RUNC_VERSION}
 EOF
 
 log "cluster image built: $IMAGE"
