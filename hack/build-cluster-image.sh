@@ -36,22 +36,30 @@ cp -a "$ROOT/runtime/k8s/." "$ROOTFS/"
 cp -a "$PAYLOAD/bin/." "$ROOTFS/bin/"
 cp -a "$PAYLOAD/images/." "$ROOTFS/images/"
 
-containers=()
 mount_image() {
-  local image ctr mnt
+  local image ctr
   image="$1"
   ctr="$($SUDO buildah from "$image")"
-  containers+=("$ctr")
-  mnt="$($SUDO buildah mount "$ctr")"
-  echo "$mnt"
+  $SUDO buildah mount "$ctr"
 }
 
 cleanup() {
   set +e
+  # All rootful buildah containers in this isolated build job belong to this
+  # script. Command substitutions run mount_image in a subshell, so remove the
+  # transient containers globally instead of trying to track a shell array.
   $SUDO buildah umount --all >/dev/null 2>&1
-  for ctr in "${containers[@]:-}"; do $SUDO buildah rm "$ctr" >/dev/null 2>&1; done
+  $SUDO buildah rm --all >/dev/null 2>&1
 }
 trap cleanup EXIT
+
+copy_from_mount() {
+  local src="$1" dst="$2"
+  # Rootful Buildah mountpoints under /var/lib/containers/storage may not be
+  # traversable by the unprivileged GitHub Actions user. Read them through the
+  # same privilege boundary that created the mount.
+  $SUDO cp -a "$src" "$dst"
+}
 
 # V1 still consumes the pinned Sealos utility cache for host helpers only.
 # Kubernetes binaries, Kubernetes image list, crictl, containerd and runc no
@@ -60,12 +68,12 @@ log "mounting remaining pinned Sealos utility cache inputs"
 MOUNT_CRI="$(mount_image "$CACHE:cri-$ARCH")"
 MOUNT_SEALOS="$(mount_image "$CACHE:sealos-v${SEALOS_NO_V}-$ARCH")"
 
-cp -a "$MOUNT_SEALOS/sealos/image-cri-shim" "$ROOTFS/cri/"
-cp -a "$MOUNT_SEALOS/sealos/sealctl" "$ROOTFS/opt/"
-cp -a "$MOUNT_CRI/cri/conntrack" "$ROOTFS/bin/"
-cp -a "$MOUNT_CRI/cri/lsof" "$ROOTFS/opt/"
-cp -a "$MOUNT_CRI/cri/registry" "$ROOTFS/cri/"
-cp -a "$MOUNT_CRI/cri/libseccomp.tar.gz" "$ROOTFS/cri/"
+copy_from_mount "$MOUNT_SEALOS/sealos/image-cri-shim" "$ROOTFS/cri/"
+copy_from_mount "$MOUNT_SEALOS/sealos/sealctl" "$ROOTFS/opt/"
+copy_from_mount "$MOUNT_CRI/cri/conntrack" "$ROOTFS/bin/"
+copy_from_mount "$MOUNT_CRI/cri/lsof" "$ROOTFS/opt/"
+copy_from_mount "$MOUNT_CRI/cri/registry" "$ROOTFS/cri/"
+copy_from_mount "$MOUNT_CRI/cri/libseccomp.tar.gz" "$ROOTFS/cri/"
 
 # The CRI runtime itself is Archinfra-owned and version-pinned.
 cp -a "$RUNTIME_BUNDLE" "$ROOTFS/cri/cri-containerd.tar.gz"
