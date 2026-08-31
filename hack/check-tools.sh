@@ -12,10 +12,11 @@ for cmd in curl tar sha256sum file buildah; do
 done
 
 SEALOS="$(sealos_bin)"
-log "version: $KUBE_VERSION"
+log "kubernetes: $KUBE_VERSION"
 log "arch: $ARCH"
 log "sealos: $SEALOS_VERSION ($SEALOS)"
-log "containerd validation line: $CONTAINERD_VALIDATED_VERSION"
+log "containerd: $CONTAINERD_VERSION"
+log "runc: $RUNC_VERSION"
 log "upstream runtime commit: $UPSTREAM_RUNTIME_COMMIT"
 
 if ! "$SEALOS" version >/dev/null 2>&1; then
