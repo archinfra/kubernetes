@@ -64,6 +64,9 @@ jobs:
       - name: Preflight
         run: ./hack/check-tools.sh
 
+      - name: Build Kubernetes payload
+        run: ./hack/build-kubernetes-payload.sh
+
       - name: Build pinned runtime bundle
         run: ./hack/build-runtime-bundle.sh
 

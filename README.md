@@ -5,11 +5,13 @@ Archinfra 自维护的 Kubernetes 发行与交付仓库。
 目标不是 fork Kubernetes，也不是把 Sealos 平台完整搬进来，而是维护一条稳定、可复现、可离线交付的 Kubernetes 基线：
 
 ```text
-source
-  -> pinned containerd+runc bundle
-  -> Sealos-compatible runtime rootfs
+Kubernetes official release + cri-tools official release
+  -> verified Kubernetes payload
+containerd official release + runc official release
+  -> verified CRI runtime bundle
+runtime source
+  -> Sealos-compatible rootfs
   -> Sealos cluster image
-  -> verification
   -> apps_kubernetes offline delivery package
 ```
 
@@ -17,13 +19,14 @@ source
 
 - Kubernetes: `v1.36.4`
 - Sealos: `v5.1.1`
-- containerd: `v2.3.3` (Archinfra downloads and verifies the official release)
-- runc: `v1.4.3` (Archinfra downloads and verifies the official release)
+- containerd: `v2.3.3`
+- runc: `v1.4.3`
+- crictl: `v1.36.0`
 - Architectures: `amd64` first, `arm64` prepared
 - Host OS target: Ubuntu 22.04 / 24.04
 - CNI / CSI / Ingress are deliberately outside the base image and will live under `addons/`
 
-The version manifest pins SHA256 for Sealos, containerd and runc. The cluster-image build **does not inherit containerd/runc from the Sealos cache**.
+Kubernetes binaries are downloaded directly from `dl.k8s.io`, verified against the Kubernetes-published SHA256, and the control-plane image list is rendered by the exact-version kubeadm. containerd, runc and crictl use explicit checksums pinned in `versions/`.
 
 ## Repository layout
 
@@ -34,7 +37,7 @@ The version manifest pins SHA256 for Sealos, containerd and runc. The cluster-im
 │   ├── containerd/
 │   └── registry/
 ├── versions/                # immutable release inputs + checksums
-├── hack/                    # build / package / verify scripts
+├── hack/                    # fetch / build / package / verify scripts
 ├── packaging/               # files copied into apps_kubernetes
 ├── configs/                 # install examples and policy
 ├── docs/
@@ -46,6 +49,7 @@ The version manifest pins SHA256 for Sealos, containerd and runc. The cluster-im
 ```bash
 make install-sealos VERSION=v1.36.4 ARCH=amd64
 make static-check
+make kubernetes-payload VERSION=v1.36.4 ARCH=amd64
 make runtime-bundle VERSION=v1.36.4 ARCH=amd64
 make check VERSION=v1.36.4 ARCH=amd64
 make cluster-image VERSION=v1.36.4 ARCH=amd64
@@ -72,6 +76,7 @@ apps_kubernetes/
 ├── bin/sealos
 ├── images/kubernetes-v1.36.4-amd64.tar
 ├── manifests/release.env
+├── manifests/kubernetes-payload.env
 ├── manifests/runtime.env
 ├── manifests/provenance.txt
 ├── configs/
@@ -101,13 +106,14 @@ The base cluster intentionally does not install a CNI. Install the approved CNI 
 
 Archinfra owns:
 
-- Kubernetes release baseline and compatibility matrix;
-- containerd/runc versions and checksums;
+- Kubernetes release baseline and node binaries;
+- Kubernetes control-plane image list generation;
+- crictl, containerd and runc versions/checksums;
 - Sealos-compatible runtime rootfs;
 - build, verification and offline packaging;
 - production defaults and release gates.
 
-V1 still consumes the pinned `ghcr.io/labring-actions/cache` for Kubernetes release payloads, `crictl`, `conntrack`, local registry binary and Sealos helper binaries. Removing that final upstream build-time dependency is a planned follow-up; it does not affect offline installation of a completed `apps_kubernetes` package.
+V1 still consumes a pinned `ghcr.io/labring-actions/cache` only for a small set of bootstrap utilities: `conntrack`, `lsof`, registry binary, libseccomp bundle, `image-cri-shim` and `sealctl`. Kubernetes binaries/image list, crictl, containerd and runc no longer come from that cache. Removing the remaining helper cache is the next independence milestone.
 
 ## Upstream policy
 

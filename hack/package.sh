@@ -39,11 +39,14 @@ CLUSTER_IMAGE_ARCHIVE=images/${IMAGE_TAR}
 SEALOS_VERSION=${SEALOS_VERSION}
 CONTAINERD_VERSION=${CONTAINERD_VERSION}
 RUNC_VERSION=${RUNC_VERSION}
+CRICTL_VERSION=${CRICTL_VERSION}
 UPSTREAM_RUNTIME_COMMIT=${UPSTREAM_RUNTIME_COMMIT}
 EOF
 
 cp -a "$ROOT/dist/cache/cri-containerd-${CONTAINERD_VERSION}-${RUNC_VERSION}-${ARCH}.tar.gz.manifest" \
   "$STAGE/manifests/runtime.env"
+cp -a "$ROOT/dist/cache/kubernetes-payload-${KUBE_VERSION}-${ARCH}.manifest" \
+  "$STAGE/manifests/kubernetes-payload.env"
 
 {
   echo "repository=archinfra/kubernetes"
