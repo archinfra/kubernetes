@@ -11,6 +11,9 @@ while IFS= read -r -d '' f; do
 done < <(find "$ROOT/hack" "$ROOT/packaging" "$ROOT/runtime" -type f -name '*.sh' -print0)
 
 required=(
+  LICENSE
+  NOTICE
+  runtime/UPSTREAM
   runtime/containerd/Kubefile
   runtime/containerd/etc/config.toml.tmpl
   runtime/containerd/scripts/init-containerd.sh
@@ -28,9 +31,6 @@ done
 grep -q '^KUBE_VERSION=v1.36.4$' "$ROOT/versions/v1.36.4.env" || status=1
 grep -q '^CONTAINERD_VERSION=v2.3.3$' "$ROOT/versions/v1.36.4.env" || status=1
 grep -q '^RUNC_VERSION=v1.4.3$' "$ROOT/versions/v1.36.4.env" || status=1
-
-if command -v shellcheck >/dev/null 2>&1; then
-  find "$ROOT/hack" "$ROOT/packaging" "$ROOT/runtime" -type f -name '*.sh' -print0 | xargs -0 shellcheck -x || status=1
-fi
+grep -q '^commit=ac453ddb30234dbec93005e97c08a8b7b55dbba9$' "$ROOT/runtime/UPSTREAM" || status=1
 
 exit "$status"

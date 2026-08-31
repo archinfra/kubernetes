@@ -1,12 +1,15 @@
 archinfra/kubernetes
 
-This repository contains files derived from the Sealos runtime project:
+This repository contains source derived from the Sealos runtime project:
   https://github.com/labring-actions/runtime
 
-Upstream copyright notices are retained in derived source files.
+Upstream runtime attribution:
+  Copyright © 2022 sealos.
+
 The upstream project is licensed under the Apache License, Version 2.0.
+Modified/derived files under runtime/ are marked as derived from the upstream runtime.
 
 Pinned upstream baseline for the first release line:
   labring-actions/runtime commit ac453ddb30234dbec93005e97c08a8b7b55dbba9
 
-Archinfra-specific build, packaging, validation, and release code is maintained in this repository.
+Archinfra-specific build, packaging, validation, version pinning and release code is maintained in this repository.
