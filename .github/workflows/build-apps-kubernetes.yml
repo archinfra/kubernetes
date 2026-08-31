@@ -1,0 +1,76 @@
+name: build-apps-kubernetes
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Kubernetes version manifest
+        required: true
+        default: v1.36.4
+      arch:
+        description: Target architecture
+        required: true
+        type: choice
+        options: [amd64, arm64]
+        default: amd64
+  push:
+    branches: [main]
+    paths:
+      - 'runtime/**'
+      - 'versions/**'
+      - 'hack/**'
+      - 'packaging/**'
+      - '.github/workflows/build-apps-kubernetes.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y buildah file tree
+
+      - name: Install pinned Sealos
+        env:
+          VERSION: ${{ inputs.version || 'v1.36.4' }}
+          ARCH: ${{ inputs.arch || 'amd64' }}
+        run: ./hack/install-sealos.sh
+
+      - name: Preflight
+        env:
+          VERSION: ${{ inputs.version || 'v1.36.4' }}
+          ARCH: ${{ inputs.arch || 'amd64' }}
+        run: ./hack/check-tools.sh
+
+      - name: Build cluster image
+        env:
+          VERSION: ${{ inputs.version || 'v1.36.4' }}
+          ARCH: ${{ inputs.arch || 'amd64' }}
+        run: ./hack/build-cluster-image.sh
+
+      - name: Build offline package
+        env:
+          VERSION: ${{ inputs.version || 'v1.36.4' }}
+          ARCH: ${{ inputs.arch || 'amd64' }}
+        run: ./hack/package.sh
+
+      - name: Verify package
+        env:
+          VERSION: ${{ inputs.version || 'v1.36.4' }}
+          ARCH: ${{ inputs.arch || 'amd64' }}
+        run: ./hack/verify-package.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apps_kubernetes-${{ inputs.version || 'v1.36.4' }}-linux-${{ inputs.arch || 'amd64' }}
+          path: dist/apps_kubernetes-*.tar.gz
+          if-no-files-found: error

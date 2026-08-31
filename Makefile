@@ -1,0 +1,34 @@
+SHELL := /usr/bin/env bash
+
+VERSION ?= v1.36.4
+ARCH ?= amd64
+IMAGE ?= localhost/archinfra/kubernetes:$(VERSION)-$(ARCH)
+
+.PHONY: help install-sealos check cluster-image package verify clean
+
+help:
+	@echo "Targets:"
+	@echo "  install-sealos  install pinned sealos into .cache/bin"
+	@echo "  check           validate build host and version inputs"
+	@echo "  cluster-image   build local Sealos Kubernetes cluster image"
+	@echo "  package         build apps_kubernetes offline delivery archive"
+	@echo "  verify          verify generated delivery archive"
+	@echo "  clean           remove generated files"
+
+install-sealos:
+	VERSION=$(VERSION) ARCH=$(ARCH) ./hack/install-sealos.sh
+
+check:
+	VERSION=$(VERSION) ARCH=$(ARCH) ./hack/check-tools.sh
+
+cluster-image:
+	VERSION=$(VERSION) ARCH=$(ARCH) IMAGE=$(IMAGE) ./hack/build-cluster-image.sh
+
+package: cluster-image
+	VERSION=$(VERSION) ARCH=$(ARCH) IMAGE=$(IMAGE) ./hack/package.sh
+
+verify:
+	VERSION=$(VERSION) ARCH=$(ARCH) ./hack/verify-package.sh
+
+clean:
+	rm -rf dist .work
