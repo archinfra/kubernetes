@@ -1,0 +1,15 @@
+[Unit]
+Description=registry: local Sealos registry
+
+[Service]
+ExecStart={{ default "/usr/bin" .BIN_DIR }}/registry serve {{ .registryConfig }}/registry_config.yml
+Restart=always
+StartLimitInterval=0
+RestartSec=10
+LimitNPROC=infinity
+LimitCORE=infinity
+LimitNOFILE=1048576
+TasksMax=infinity
+
+[Install]
+WantedBy=multi-user.target
