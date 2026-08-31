@@ -18,9 +18,15 @@ rm -rf "$PAYLOAD"
 mkdir -p "$DOWNLOAD_ROOT/$ARCH" "$DOWNLOAD_ROOT/$HOST_ARCH" "$PAYLOAD/bin" "$PAYLOAD/images/shim"
 
 fetch_kube_binary() {
-  local arch="$1" name="$2" out="$3"
-  local dir="$DOWNLOAD_ROOT/$arch" file="$dir/$name" sum="$dir/$name.sha256"
+  local arch="$1"
+  local name="$2"
+  local out="$3"
+  local dir="$DOWNLOAD_ROOT/$arch"
+  local file="$dir/$name"
+  local sum="$dir/$name.sha256"
   local base="https://dl.k8s.io/release/${KUBE_VERSION}/bin/linux/${arch}/${name}"
+  local expected actual
+
   mkdir -p "$dir"
   if [[ ! -s "$file" ]]; then
     log "download Kubernetes ${name} ${KUBE_VERSION} linux/${arch}"
@@ -29,7 +35,6 @@ fetch_kube_binary() {
   if [[ ! -s "$sum" ]]; then
     curl -fL --retry 5 --retry-delay 2 -o "$sum" "${base}.sha256"
   fi
-  local expected actual
   expected="$(tr -d '[:space:]' < "$sum")"
   actual="$(sha256_file "$file")"
   [[ "$actual" == "$expected" ]] || die "Kubernetes binary checksum mismatch: $name linux/$arch expected=$expected actual=$actual"
