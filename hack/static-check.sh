@@ -35,5 +35,8 @@ grep -q '^CONTAINERD_VERSION=v2.3.3$' "$ROOT/versions/v1.36.4.env" || status=1
 grep -q '^RUNC_VERSION=v1.4.3$' "$ROOT/versions/v1.36.4.env" || status=1
 grep -q '^CRICTL_VERSION=v1.36.0$' "$ROOT/versions/v1.36.4.env" || status=1
 grep -q '^commit=ac453ddb30234dbec93005e97c08a8b7b55dbba9$' "$ROOT/runtime/UPSTREAM" || status=1
+grep -q '^version = 3$' "$ROOT/runtime/containerd/etc/config.toml.tmpl" || { echo 'containerd 2.x config must use schema version 3' >&2; status=1; }
+grep -q 'io.containerd.cri.v1.runtime' "$ROOT/runtime/containerd/etc/config.toml.tmpl" || { echo 'containerd 2.x CRI runtime plugin missing' >&2; status=1; }
+grep -q 'io.containerd.cri.v1.images' "$ROOT/runtime/containerd/etc/config.toml.tmpl" || { echo 'containerd 2.x CRI images plugin missing' >&2; status=1; }
 
 exit "$status"

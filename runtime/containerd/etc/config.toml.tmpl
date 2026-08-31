@@ -1,4 +1,6 @@
-version = 2
+# Archinfra containerd 2.x configuration.
+# Schema follows containerd v2.3.x config version 3.
+version = 3
 root = "{{ .criData }}"
 state = "/run/containerd"
 oom_score = 0
@@ -17,22 +19,34 @@ oom_score = 0
   level = "warn"
 
 [plugins]
-  [plugins."io.containerd.grpc.v1.cri"]
-    sandbox_image = "{{ .registryDomain }}:{{ .registryPort }}/{{ .sandboxImage }}"
-    max_container_log_line_size = 16384
+  [plugins."io.containerd.cri.v1.images"]
+    snapshotter = "overlayfs"
     max_concurrent_downloads = 20
-    disable_apparmor = {{ .disableApparmor }}
-    [plugins."io.containerd.grpc.v1.cri".containerd]
-      snapshotter = "overlayfs"
-      default_runtime_name = "runc"
-      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
-        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
-          runtime_type = "io.containerd.runc.v2"
-          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-            SystemdCgroup = true
-    [plugins."io.containerd.grpc.v1.cri".registry]
+
+    [plugins."io.containerd.cri.v1.images".pinned_images]
+      sandbox = "{{ .registryDomain }}:{{ .registryPort }}/{{ .sandboxImage }}"
+
+    [plugins."io.containerd.cri.v1.images".registry]
       config_path = "/etc/containerd/certs.d"
-      [plugins."io.containerd.grpc.v1.cri".registry.configs]
-        [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ .registryDomain }}:{{ .registryPort }}".auth]
-          username = "{{ .registryUsername }}"
-          password = "{{ .registryPassword }}"
+
+      # The local bootstrap registry is intentionally configured here because
+      # kubelet/crictl must be able to pull the images embedded by Sealos.
+      # containerd documents this host auth form for config version 3, although
+      # host-stored clear-text credentials remain a deprecated compatibility path.
+      [plugins."io.containerd.cri.v1.images".registry.configs."{{ .registryDomain }}:{{ .registryPort }}".auth]
+        username = "{{ .registryUsername }}"
+        password = "{{ .registryPassword }}"
+
+  [plugins."io.containerd.cri.v1.runtime"]
+    max_container_log_line_size = 16384
+    disable_apparmor = {{ .disableApparmor }}
+
+    [plugins."io.containerd.cri.v1.runtime".containerd]
+      default_runtime_name = "runc"
+
+      [plugins."io.containerd.cri.v1.runtime".containerd.runtimes]
+        [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.runc]
+          runtime_type = "io.containerd.runc.v2"
+
+          [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.runc.options]
+            SystemdCgroup = true

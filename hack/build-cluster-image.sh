@@ -78,6 +78,10 @@ pause_image="$(grep '/pause:' "$ROOTFS/images/shim/DefaultImageList" | head -n1)
 [[ -n "$pause_image" ]] || die "pause image not found in Kubernetes payload"
 ipvs_image="ghcr.io/labring/lvscare:${SEALOS_VERSION}"
 
+# Sealos consumes image list files under images/shim while building a cluster
+# image. Keep lvscare explicit so the HA VIP helper is also available offline.
+printf '%s\n' "$ipvs_image" > "$ROOTFS/images/shim/LvscareImageList"
+
 log "building cluster image $IMAGE"
 cd "$ROOTFS"
 $SUDO "$SEALOS" build \
