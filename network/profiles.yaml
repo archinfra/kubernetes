@@ -1,0 +1,8 @@
+profiles:
+  calico:
+    version: v3.32.1
+    purpose: default production networking
+
+  cilium:
+    version: v1.x
+    purpose: eBPF advanced networking and observability
