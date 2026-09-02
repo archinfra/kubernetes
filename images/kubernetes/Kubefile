@@ -1,0 +1,10 @@
+# Archinfra Kubernetes Cluster Image
+#
+# Built by GitHub Actions using Sealos cluster image builder.
+# Kubernetes version is controlled by release/*.yaml.
+
+FROM scratch
+
+COPY . /rootfs
+
+CMD ["/rootfs/scripts/init.sh"]
