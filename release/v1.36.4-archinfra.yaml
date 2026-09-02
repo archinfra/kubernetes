@@ -1,0 +1,28 @@
+release: v1.36.4-archinfra.1
+
+sealos:
+  version: v5.1.1
+
+kubernetes:
+  version: v1.36.4
+
+runtime:
+  default: docker
+  docker:
+    version: v28
+  cri_dockerd:
+    version: v0.4.x
+
+network:
+  default: calico
+  calico:
+    version: v3.32.1
+  cilium:
+    version: v1.x
+
+artifacts:
+  - sealos-binary
+  - kubernetes-cluster-image
+  - runtime-image
+  - network-images
+  - apps_kubernetes
