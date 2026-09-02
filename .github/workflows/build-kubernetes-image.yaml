@@ -1,0 +1,61 @@
+name: Build Kubernetes Cluster Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      kubernetes_version:
+        description: Kubernetes version
+        required: false
+        default: v1.36.4
+
+jobs:
+  build-kubernetes-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      KUBERNETES_VERSION: ${{ inputs.kubernetes_version || 'v1.36.4' }}
+      IMAGE_NAME: archinfra/kubernetes
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl jq docker.io
+
+      - name: Install Sealos
+        run: |
+          curl -sfL https://raw.githubusercontent.com/labring/sealos/main/scripts/install.sh | sh
+          sealos version
+
+      - name: Prepare Kubernetes cluster image
+        run: |
+          mkdir -p build/kubernetes
+          cat > build/kubernetes/Kubefile <<'EOF'
+FROM scratch
+COPY . /
+CMD ["init"]
+EOF
+
+          echo "Kubernetes version: ${KUBERNETES_VERSION}"
+
+      - name: Build Sealos cluster image
+        run: |
+          sealos build \
+            -t ${IMAGE_NAME}:${KUBERNETES_VERSION} \
+            build/kubernetes
+
+      - name: Export image
+        run: |
+          mkdir -p artifacts
+          sealos save -o artifacts/kubernetes-${KUBERNETES_VERSION}.tar ${IMAGE_NAME}:${KUBERNETES_VERSION}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubernetes-${{ env.KUBERNETES_VERSION }}
+          path: artifacts/*.tar
