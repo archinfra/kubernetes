@@ -1,0 +1,7 @@
+dist/
+.cache/
+.work/
+.versions/
+*.tar
+*.tar.gz
+*.tmp

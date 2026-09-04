@@ -1,0 +1,8 @@
+# Derived from the Sealos kubeadm kubelet drop-in (Apache-2.0).
+[Service]
+Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
+Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+Environment="KUBELET_EXTRA_ARGS=--runtime-request-timeout=15m --container-runtime-endpoint=unix://{{ .SEALOS_SYS_CRI_ENDPOINT }} --image-service-endpoint=unix:///var/run/image-cri-shim.sock"
+ExecStart=
+ExecStart={{ default "/usr/bin" .BIN_DIR }}/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS

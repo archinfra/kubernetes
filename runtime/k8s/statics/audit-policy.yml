@@ -1,0 +1,27 @@
+# Based on the Sealos audit policy; maintained by Archinfra.
+apiVersion: audit.k8s.io/v1
+kind: Policy
+omitStages:
+  - RequestReceived
+rules:
+  - level: None
+    nonResourceURLs:
+      - /healthz*
+      - /livez*
+      - /readyz*
+      - /version
+  - level: None
+    resources:
+      - group: ""
+        resources: ["events"]
+  - level: Metadata
+    resources:
+      - group: ""
+        resources: ["secrets", "configmaps"]
+      - group: authentication.k8s.io
+        resources: ["tokenreviews"]
+  - level: Request
+    verbs: ["get", "list", "watch"]
+  - level: RequestResponse
+    verbs: ["create", "update", "patch", "delete", "deletecollection"]
+  - level: Metadata
